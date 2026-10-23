@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kintsugi, Step by Step</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@300;400;500&family=Shippori+Mincho:wght@500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #efe6d8;
+    --muted: rgba(239, 230, 216, 0.6);
+    --line: rgba(239, 230, 216, 0.16);
+    --gold: #d9b25c;
+    --bg: #0d0c0b;
+    --panel: 400px;
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
+    font-family: Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  a { color: inherit; }
+
+  .brand { position: fixed; top: 28px; left: 32px; display: flex; align-items: baseline; gap: 14px; }
+  .brand .kanji { font-family: 'Shippori Mincho', serif; font-size: 20px; color: var(--gold); letter-spacing: 0.12em; }
+  .brand .word { font-family: 'Cormorant Garamond', serif; font-size: 26px; letter-spacing: 0.08em; }
+  .brand .sub { font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--muted); }
+
+  .top-right { position: fixed; top: 26px; right: 32px; display: flex; align-items: center; gap: 18px; }
+  .back { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); text-decoration: none;
+    transition: color 0.2s; }
+  .back:hover { color: var(--gold); }
+  .picker { appearance: none; -webkit-appearance: none; font: inherit; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink); background: rgba(20, 18, 16, 0.5) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23d9b25c' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 14px center / 10px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 9px 38px 9px 16px; cursor: pointer; }
+  .picker:hover, .picker:focus-visible { border-color: var(--gold); outline: none; }
+  .picker option { background: #1a1816; color: var(--ink); }
+
+  .panel { position: fixed; left: 32px; top: 50%; transform: translateY(-54%); width: calc(var(--panel) - 64px); }
+  .panel .body { transition: opacity 0.35s ease, transform 0.35s ease; }
+  .panel .body.out { opacity: 0; transform: translateY(8px); }
+  .phase { display: flex; align-items: baseline; gap: 10px; font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--gold); }
+  .phase .pj { font-family: 'Shippori Mincho', serif; letter-spacing: 0.2em; font-size: 12px; }
+  .stepno { font-size: 11px; letter-spacing: 0.2em; color: var(--muted); margin-top: 22px; font-variant-numeric: tabular-nums; }
+  .panel h1 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 44px; line-height: 1.04; margin: 8px 0 6px; }
+  .panel .jp { font-family: 'Shippori Mincho', serif; color: var(--gold); font-size: 15px; letter-spacing: 0.2em; min-height: 1.2em; }
+  .panel p { font-size: 14px; line-height: 1.65; color: rgba(239, 230, 216, 0.82); margin: 18px 0 0; font-weight: 300; }
+  .stats { margin-top: 18px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; line-height: 1.7; color: var(--gold);
+    opacity: 0.9; white-space: pre-line; }
+  .wait { margin-top: 14px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); display: none; }
+  .wait.on { display: block; }
+  figure.map { margin: 20px 0 0; display: none; }
+  figure.map.on { display: block; }
+  figure.map canvas { position: static; width: 168px; height: auto; border-radius: 4px; border: 1px solid var(--line); cursor: default;
+    image-rendering: auto; }
+  figure.map figcaption { margin-top: 8px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+
+  .timeline { position: fixed; left: 32px; right: 32px; bottom: 26px; display: flex; align-items: flex-end; gap: 18px; }
+  .ctrl { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: rgba(20, 18, 16, 0.4);
+    color: var(--ink); cursor: pointer; display: grid; place-items: center; padding: 0; flex: none; transition: border-color 0.2s, color 0.2s; }
+  .ctrl:hover { border-color: var(--gold); color: var(--gold); }
+  .ctrl svg { width: 14px; height: 14px; }
+  .ctrl.play { width: 48px; height: 48px; }
+  .ctrl.play svg { width: 16px; height: 16px; }
+  .track { flex: 1; display: flex; gap: 10px; min-width: 0; }
+  .ph { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .ph-label { font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden;
+    transition: color 0.3s; }
+  .ph.on .ph-label { color: var(--gold); }
+  .segs { display: flex; gap: 3px; }
+  .seg { position: relative; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; min-width: 0; }
+  .seg::before { content: ''; position: absolute; left: 0; right: 0; top: 10px; height: 2px; background: var(--line); }
+  .seg i { position: absolute; left: 0; top: 10px; height: 2px; background: var(--gold); width: 0; }
+  .seg:hover::before { background: rgba(217, 178, 92, 0.4); }
+  .seg .tip { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); background: rgba(20, 18, 16, 0.85); border: 1px solid var(--line);
+    padding: 5px 9px; border-radius: 4px; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+  .seg:hover .tip { opacity: 1; }
+  .clock { flex: none; font-size: 11px; letter-spacing: 0.14em; color: var(--muted); font-variant-numeric: tabular-nums; padding-bottom: 14px; }
+
+  body.recording .brand, body.recording .top-right, body.recording .panel, body.recording .timeline { display: none; }
+  body.recording canvas { inset: auto; cursor: default; }
+  #recBadge { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 5; display: none; align-items: center; gap: 10px;
+    padding: 8px 14px; border-radius: 999px; background: rgba(20, 18, 16, 0.75); border: 1px solid var(--line);
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  #recBadge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #e0483e; }
+  #recBadge.on { display: flex; }
+
+  @media (max-width: 900px) {
+    :root { --panel: 0px; }
+    .brand { top: 18px; left: 16px; gap: 10px; }
+    .brand .sub, .back { display: none; }
+    .top-right { top: 14px; right: 16px; }
+    .panel { left: 16px; right: 16px; top: auto; bottom: 104px; transform: none; width: auto; }
+    .panel h1 { font-size: 30px; }
+    .panel p { font-size: 13px; margin-top: 10px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .stepno { margin-top: 10px; }
+    .stats, figure.map { display: none !important; }
+    .timeline { left: 16px; right: 16px; bottom: 20px; gap: 10px; }
+    .ph-label, .clock, .ctrl.side { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="c" tabindex="0"></canvas>
+
+<header class="brand">
+  <span class="kanji">金継ぎ</span><span class="word">Kintsugi</span><span class="sub">How it's made</span>
+</header>
+<div class="top-right">
+  <a class="back" id="back" href="index.html">← Collection</a>
+  <select class="picker" id="picker" aria-label="Piece"></select>
+</div>
+
+<aside class="panel">
+  <div class="body" id="body">
+    <div class="phase"><span id="phase"></span><span class="pj" id="phaseJp"></span></div>
+    <div class="stepno" id="stepno"></div>
+    <h1 id="title"></h1>
+    <div class="jp" id="jp"></div>
+    <p id="text"></p>
+    <div class="stats" id="stats"></div>
+    <figure class="map" id="map"><canvas id="thumb"></canvas><figcaption id="mapCap"></figcaption></figure>
+  </div>
+  <div class="wait" id="wait"></div>
+</aside>
+
+<footer class="timeline">
+  <button class="ctrl side" id="prev" aria-label="Previous step">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <button class="ctrl play" id="play" aria-label="Play or pause"></button>
+  <button class="ctrl side" id="next" aria-label="Next step">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 5l7 7-7 7"/></svg>
+  </button>
+  <div class="track" id="track"></div>
+  <div class="clock" id="clock"></div>
+</footer>
+
+<div id="recBadge"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { TAU, clamp, mix, smoothstep, buildBead, bakeMaps, PIECES, trace } from './core.js';
+import {
+  setAnisotropy, makeBackdrop, studioEnvironment, contactTex, makeGoldMaterial, goldMaps, GOLD_F0,
+  dataTexture, acrylic, potteryTextures, potteryMaterial, mountOnStand,
+} from './studio.js';
+
+// ---- the script of the walkthrough ------------------------------------------------------
+
+const PHASES = {
+  form: { name: 'Form', jp: '形' },
+  break: { name: 'Fracture', jp: '割れ' },
+  glaze: { name: 'Glaze', jp: '釉' },
+  repair: { name: 'Repair', jp: '金継ぎ' },
+};
+
+const STEPS = [
+  { id: 'profile', phase: 'form', dur: 6, title: 'The profile', jp: '断面',
+    text: 'Every piece starts as one line: the cross-section of its wall, from the centre of the foot, out under the base, over the lip and back down the inside. A handful of control points are joined by a centripetal Catmull-Rom spline and resampled at equal arc length.',
+    stats: (p) => `${p.surf.ctrl.length} control points\n→ ${p.surf.N + 1} samples along the wall` },
+  { id: 'lathe', phase: 'form', dur: 6, title: 'On the wheel', jp: '轆轤',
+    text: 'Like clay on a potter’s wheel, the profile is spun around the vertical axis. Each sample along the line becomes a ring; one coordinate runs along the profile, the other around the axis.',
+    stats: (p) => `${p.surf.N + 1} rings × ${p.segT} segments around` },
+  { id: 'mesh', phase: 'form', dur: 6, title: 'The mesh', jp: '',
+    text: 'Neighbouring rings are stitched into triangles. Normals come straight from the slope of the profile, so the foot ring and lip stay crisp without extra geometry.',
+    stats: (p) => `${p.verts.toLocaleString('en')} vertices\n${p.tris.toLocaleString('en')} triangles\nwireframe shown at reduced density` },
+  { id: 'warp', phase: 'form', dur: 5, title: 'The hand of the potter', jp: '手跡',
+    text: 'A thrown pot is never perfectly round. A few slow waves around the axis push the wall in and out and tilt the rim, and fine throwing rings ripple the profile.',
+    stats: (p) => `wall wobble up to ±${(p.wobble * 100).toFixed(1)} %\nrim lift up to ${(p.lift * 100).toFixed(1)} % of the radius` },
+  { id: 'fracture', phase: 'break', dur: 7, title: 'Where it breaks', jp: '割れ',
+    text: (p) => (p.planes.length
+      ? 'Real breaks run almost straight through the body, roughly square to the wall. Each crack starts as the cut of a plane through two points on the surface, solved ring by ring, then clipped where it runs into another crack or stops short.'
+      : 'The plate split clean across its face. The break starts as a gentle curve drawn in plan, laid onto the upper and lower surface and wrapped over the rim at both ends, so it closes into a single loop.'),
+    stats: (p) => (p.planes.length ? `${p.planes.length} fracture planes · ${p.cracks.length} cracks` : '1 Bézier chord · 1 closed loop') },
+  { id: 'roughen', phase: 'break', dur: 6, title: 'A natural edge', jp: '',
+    text: 'Fired clay never breaks cleanly. The ideal line is resampled by true distance and pushed sideways by two kinds of noise: a slow wander that follows the grain of the body, and a fine, jagged tremor.',
+    stats: (p) => `${p.crackPts.toLocaleString('en')} points, one every 4 mm\n2 noise layers: wander + tremor` },
+  { id: 'clay', phase: 'glaze', dur: 4.5, title: 'Bisque', jp: '素焼',
+    text: 'The bare fired body, now at full resolution. Everything you see from here on is computed in the browser: each texel of the glaze is evaluated from 3D noise at its point on the pot.',
+    stats: (p) => `${p.tex.w} × ${p.tex.h} texels per map${p.bakeMs ? `\nbaked in ${(p.bakeMs / 1000).toFixed(1)} s` : ''}` },
+  { id: 'color', phase: 'glaze', dur: 5, title: 'Colour', jp: '釉色', needsMaps: true, map: 'color',
+    text: 'Layered fractal noise, Voronoi crackle and the shape of the pot itself (glaze pooling in the well, thinning over the rim, the bare foot) decide the colour at every point.',
+    stats: () => 'base colour · sRGB' },
+  { id: 'rough', phase: 'glaze', dur: 5, title: 'Roughness & metal', jp: '', map: 'orm',
+    text: 'How sharply each point reflects. Crystals, crazing and the unglazed foot scatter light differently from the glassy field. Packed glTF-style into one texture with occlusion and metalness.',
+    stats: () => 'R occlusion · G roughness · B metalness' },
+  { id: 'relief', phase: 'glaze', dur: 5, title: 'Relief', jp: '', map: 'normal',
+    text: 'A height field of pinholes, crawl and crackle is turned into a normal map, so light rakes across detail that isn’t in the geometry.',
+    stats: () => 'height → tangent-space normals' },
+  { id: 'glaze', phase: 'glaze', dur: 5, title: 'Glassy coat', jp: '釉薬', map: 'coat',
+    text: 'A clear-coat layer gives the second, sharper reflection of molten glass that cooled on the surface; the bare foot ring is masked out.',
+    stats: (p) => `clear-coat ${p.coat.clearcoat} · coat roughness ${p.coat.roughness}\nIOR 1.52` },
+  { id: 'sabi', phase: 'repair', dur: 5, title: 'Join & fill', jp: '麦漆 · 錆漆',
+    text: 'The shards are glued with mugi-urushi, lacquer kneaded with wheat flour. Once cured, the seam is filled flush with sabi: lacquer mixed with whetstone powder.',
+    stats: () => 'low, dark bead · 45 % of the final height' },
+  { id: 'urushi', phase: 'repair', dur: 5, title: 'Red lacquer', jp: '弁柄漆',
+    text: 'A raised line of bengara urushi, lacquer coloured with red iron oxide, is painted along the seam. Its swept cross-section is a flattened ellipse whose width wavers like a brush stroke.',
+    stats: (p) => `12-sided cross-section · ${p.rings.toLocaleString('en')} rings\nwidth ${(p.gold.width * 2 * 100).toFixed(1)} % of the radius` },
+  { id: 'gold', phase: 'repair', dur: 6, title: 'Gold powder', jp: '粉蒔',
+    text: 'While the lacquer is still tacky, fine gold powder is sprinkled over it with a soft tube. It catches only on the wet line; the rest is brushed away.',
+    stats: () => 'matte, granular gold · roughness 0.5' },
+  { id: 'burnish', phase: 'repair', dur: 5, title: 'Burnishing', jp: '磨き',
+    text: 'Once cured, the gold is polished with a smooth stone. It renders as pure metal: gold’s warm reflectance, fine granular roughness, and red lacquer just showing at the edges of the bead.',
+    stats: () => 'metalness 1 · F0 (1.00, 0.74, 0.32)\nroughness 0.15 – 0.45, granular' },
+  { id: 'final', phase: 'repair', dur: 8, title: 'Made whole', jp: '完成',
+    text: (p) => `${p.name}, ${p.jp}. Lit by a virtual photo studio with soft shadows and a touch of bloom. The repair is not hidden; it becomes part of the piece’s history.`,
+    stats: () => 'image-based studio light · soft shadows · bloom' },
+];
+
+let t0 = 0;
+const START = {}, STEP = {};
+for (const s of STEPS) { START[s.id] = t0; STEP[s.id] = s; s.start = t0; t0 += s.dur; }
+const TOTAL = t0;
+const MAP_STEPS = ['color', 'rough', 'relief', 'glaze'];
+
+// Camera per step: polar angle, distance (× fit), how far to lean toward the crack.
+const VIEWS = {
+  profile: { phi: 1.48, rm: 0.95, fc: 0, plate: { rm: 0.8 } },
+  lathe: { phi: 1.22, rm: 1, fc: 0 },
+  mesh: { phi: 1.02, rm: 0.95, fc: 0 },
+  warp: { phi: 1.1, rm: 0.95, fc: 0 },
+  fracture: { phi: 0.98, rm: 0.95, fc: 0.15, plate: { phi: 0.66 } },
+  roughen: { phi: 0.98, rm: 0.66, fc: 0.6, plate: { phi: 0.6, rm: 0.78, fc: 0.35 } },
+  clay: { phi: 1.05, rm: 0.95, fc: 0.1, plate: { phi: 0.8 } },
+  color: { phi: 1.05, rm: 0.95, fc: 0.1, plate: { phi: 0.8 } },
+  rough: { phi: 1.08, rm: 0.92, fc: 0.1, plate: { phi: 0.82 } },
+  relief: { phi: 1.0, rm: 0.8, fc: 0.25, plate: { phi: 0.8 } },
+  glaze: { phi: 1.05, rm: 0.92, fc: 0.1, plate: { phi: 0.85 } },
+  sabi: { phi: 0.98, rm: 0.62, fc: 0.6, plate: { phi: 0.7, rm: 0.7, fc: 0.3 } },
+  urushi: { phi: 0.98, rm: 0.62, fc: 0.6, plate: { phi: 0.7, rm: 0.7, fc: 0.3 } },
+  gold: { phi: 0.98, rm: 0.62, fc: 0.6, plate: { phi: 0.7, rm: 0.7, fc: 0.3 } },
+  burnish: { phi: 0.95, rm: 0.6, fc: 0.6, plate: { phi: 0.66, rm: 0.66, fc: 0.3 } },
+  final: { phi: null, rm: 1.0, fc: 0 },
+};
+
+// ---- renderer, scene, camera ------------------------------------------------------------
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+const DPR = Math.min(devicePixelRatio, 2);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.25;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.localClippingEnabled = true;
+setAnisotropy(renderer);
+
+const scene = new THREE.Scene();
+scene.background = makeBackdrop();
+scene.environment = studioEnvironment(renderer);
+
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.02, 100);
+
+const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.22, 0.45, 1.0);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const sun = new THREE.DirectionalLight(0xfff0dc, 1.5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -2.5, right: 2.5, top: 2.5, bottom: -2.5, near: 0.5, far: 20 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+sun.position.set(-2.6, 6.2, 3.8);
+sun.target.position.set(0, 0.4, 0);
+scene.add(sun, sun.target);
+const backFill = new THREE.DirectionalLight(0xfff4e8, 1.4);
+backFill.position.set(2.5, 4, -5);
+backFill.target.position.set(0, 0.6, 0);
+scene.add(backFill, backFill.target);
+scene.add(new THREE.HemisphereLight(0xfff6ee, 0x2a2420, 0.5));
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 30), new THREE.ShadowMaterial({ opacity: 0.38 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ---- materials ------------------------------------------------------------------------------
+
+const glow = (r, g, b) => new THREE.Color(r, g, b);   // > 1 so bloom picks it up; not tone mapped
+const lineMat = (color, opts = {}) => new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: true, ...opts });
+
+const modelColor = new THREE.Color('#4a4642');   // neutral modelling grey for the geometry steps
+const clayColor = new THREE.Color('#a8957f');    // fired bisque
+const makeClay = (extra = {}) => new THREE.MeshPhysicalMaterial({ color: clayColor, roughness: 0.9, metalness: 0, ...extra });
+
+const sabiMaterial = new THREE.MeshPhysicalMaterial({
+  color: new THREE.Color('#2a1d16'), roughness: 0.55, clearcoat: 0.4, clearcoatRoughness: 0.3, vertexColors: true,
+});
+const urushiMaterial = new THREE.MeshPhysicalMaterial({
+  color: new THREE.Color('#7a2112'), roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.06, vertexColors: true,
+});
+const powderMaterial = new THREE.MeshPhysicalMaterial({
+  color: GOLD_F0, metalness: 1, roughness: 0.5, vertexColors: true, envMapIntensity: 1.7,
+  map: dataTexture(goldMaps.color, goldMaps.w, goldMaps.h, true, THREE.RepeatWrapping),
+  normalMap: dataTexture(goldMaps.nrm, goldMaps.w, goldMaps.h, false, THREE.RepeatWrapping),
+  normalScale: new THREE.Vector2(1.4, 1.4),
+});
+const goldMaterial = makeGoldMaterial();
+
+const spark = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,1)');
+  grd.addColorStop(0.25, 'rgba(255,236,190,0.6)');
+  grd.addColorStop(1, 'rgba(255,220,150,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+
+// ---- geometry helpers ---------------------------------------------------------------------------
+
+// Surface point with the potter's warp blended in by f (0 = perfect lathe, 1 = as thrown).
+const smp = {};
+function warpedPoint(surf, s, th, f, P, N) {
+  const o = surf.sample(s, smp);
+  let r = o.r, y = o.y;
+  if (surf.warp && f) { const w = surf.warp(th, r, y); r *= 1 + (w[0] - 1) * f; y += w[1] * f; }
+  const c = Math.cos(th), si = Math.sin(th);
+  P.set(r * c, y, r * si);
+  if (N) N.set(o.nr * c, o.ny, o.nr * si);
+}
+
+// The display surface for the geometry steps. Columns are ordered in pairs (θ, θ + π) so a
+// single draw range sweeps both halves at once, following the two sides of the profile.
+function latheSurface(surf, rows, cols) {
+  const C = cols + 1, pos = new Float32Array((rows + 1) * C * 3), nor = new Float32Array(pos.length);
+  const idx = [];
+  for (let k = 0; k < cols / 2; k++) for (const j of [k, k + cols / 2]) {
+    for (let i = 0; i < rows; i++) {
+      const a = i * C + j, b = a + C;
+      idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  geo.setIndex(idx);
+  const P = new THREE.Vector3(), N = new THREE.Vector3();
+  const update = (f) => {
+    for (let i = 0; i <= rows; i++) for (let j = 0; j <= cols; j++) {
+      warpedPoint(surf, i / rows, (j / cols) * TAU, f, P, N);
+      P.toArray(pos, (i * C + j) * 3); N.toArray(nor, (i * C + j) * 3);
+    }
+    geo.attributes.position.needsUpdate = geo.attributes.normal.needsUpdate = true;
+    geo.computeBoundingSphere();
+  };
+  update(0);
+  return { geo, update, perPair: rows * 12, pairs: cols / 2 };
+}
+
+// A quad wireframe: rings along the profile and meridians around it.
+function latheWire(surf, rings, meridians, rows, cols) {
+  const segs = rings * cols + meridians * rows;
+  const pos = new Float32Array(segs * 6);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const P = new THREE.Vector3(), Q = new THREE.Vector3();
+  const update = (f) => {
+    let k = 0;
+    const seg = (s0, t0, s1, t1) => {
+      warpedPoint(surf, s0, t0, f, P); warpedPoint(surf, s1, t1, f, Q);
+      P.toArray(pos, k); Q.toArray(pos, k + 3); k += 6;
+    };
+    for (let r = 1; r <= rings; r++) {
+      const s = r / (rings + 1);
+      for (let j = 0; j < cols; j++) seg(s, (j / cols) * TAU, s, ((j + 1) / cols) * TAU);
+    }
+    for (let m = 0; m < meridians; m++) {
+      const th = (m / meridians) * TAU;
+      for (let i = 0; i < rows; i++) seg(i / rows, th, (i + 1) / rows, th);
+    }
+    geo.attributes.position.needsUpdate = true;
+    geo.computeBoundingSphere();
+  };
+  update(0);
+  return { geo, update };
+}
+
+class ProfileCurve extends THREE.Curve {
+  constructor(surf, sign) { super(); this.surf = surf; this.sign = sign; }
+  getPoint(t, out = new THREE.Vector3()) { const o = this.surf.sample(t, {}); return out.set(this.sign * o.r, o.y, 0); }
+}
+
+const quads = (geo) => geo.index.count;
+function drawFraction(mesh, a, b) {   // show the part of an indexed strip between fractions a and b
+  const n = quads(mesh.geometry) / 6;
+  const i0 = Math.floor(clamp(a) * n), i1 = Math.floor(clamp(b) * n);
+  mesh.geometry.setDrawRange(i0 * 6, Math.max(0, i1 - i0) * 6);
+  mesh.visible = i1 > i0;
+}
+
+// ---- build one piece for the walkthrough --------------------------------------------------------
+
+const box = new THREE.Box3(), tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
+let P = null;
+let bakeToken = 0;
+
+function buildPiece(index) {
+  const def = PIECES[index];
+  // Build twice: once with ideal straight breaks, once as authored, recording the fracture planes.
+  trace.ampScale = 0;
+  const ideal = def.build();
+  trace.ampScale = 1; trace.planes = []; trace.chords = [];
+  const p = Object.assign({}, def, def.build());
+  p.planes = trace.planes; p.chords = trace.chords;
+  trace.planes = trace.chords = null;
+  p.index = index;
+  p.segT = p.segT || 256;
+  const surf = p.surf, isPlate = p.mount === 'stand';
+  p.isPlate = isPlate;
+
+  p.root = new THREE.Group();
+  p.spin = new THREE.Group();
+  p.holder = new THREE.Group();
+  p.root.add(p.spin);
+  p.spin.add(p.holder);
+  scene.add(p.root);
+  if (!isPlate) p.holder.scale.setScalar(p.scale || 1);
+
+  let yMax = 0;
+  for (let i = 0; i <= surf.N; i++) yMax = Math.max(yMax, surf.y[i]);
+  const u = Math.max(surf.rMax, yMax / 2);   // size unit for lines and markers
+  p.u = u;
+
+  // The real, full-resolution mesh; two copies so one material can wipe over the previous one.
+  p.geo = surf.geometry(p.segT, p.tex.uv);
+  p.verts = p.geo.attributes.position.count;
+  p.tris = p.geo.index.count / 3;
+  p.mesh = new THREE.Mesh(p.geo, makeClay());
+  p.under = new THREE.Mesh(p.geo, makeClay());
+  for (const m of [p.mesh, p.under]) { m.castShadow = m.receiveShadow = true; p.holder.add(m); }
+  p.mats = [makeClay()];
+
+  // The plate's easel, measured before anything else joins the holder; it fades in at the end.
+  p.centerFinal = null;
+  if (isPlate) {
+    const stand = mountOnStand(p, acrylic.clone());
+    p.stand = stand;
+    p.holder.updateMatrixWorld(true);
+    box.setFromObject(p.mesh);
+    p.centerFinal = box.getCenter(new THREE.Vector3());
+    p.radiusFinal = box.getSize(tmp).length() / 2;
+    p.holder.rotation.x = 0; p.holder.position.y = 0;
+    for (const m of stand.parts) { m.userData.opacity = m.material.opacity; m.visible = false; }
+  }
+
+  // Profile: the line, its control points and polygon, mirrored to both sides of the axis.
+  p.profile = new THREE.Group();
+  const tubeMat = lineMat(glow(1.5, 1.12, 0.62));
+  const dotMat = lineMat(glow(1.9, 1.6, 1.2));
+  const polyMat = new THREE.LineBasicMaterial({ color: glow(0.9, 0.75, 0.5), transparent: true, opacity: 0.35, toneMapped: false });
+  p.tubes = []; p.dots = [];
+  const ctrl = surf.ctrl;
+  for (const sign of [1, -1]) {
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(new ProfileCurve(surf, sign), surf.N, u * 0.0042, 6, false), tubeMat);
+    const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(u * 0.009, 12, 8), dotMat, ctrl.length);
+    dots.userData.pts = ctrl.map(([r, y]) => new THREE.Vector3(sign * r, y, 0));
+    const poly = new THREE.Line(new THREE.BufferGeometry().setFromPoints(dots.userData.pts), polyMat);
+    p.profile.add(tube, dots, poly);
+    p.tubes.push(tube); p.dots.push(dots);
+  }
+  p.polyMat = polyMat; p.tubeMat = tubeMat;
+  const axisGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -0.15 * u, 0), new THREE.Vector3(0, yMax + 0.35 * u, 0)]);
+  p.axis = new THREE.Line(axisGeo, new THREE.LineDashedMaterial({ color: glow(0.9, 0.8, 0.6), dashSize: u * 0.04, gapSize: u * 0.03, transparent: true, toneMapped: false }));
+  p.axis.computeLineDistances();
+  p.holder.add(p.profile, p.axis);
+
+  // Display surface and wireframe for the geometry steps.
+  const rows = Math.round(surf.N / 2), cols = 192;
+  p.disp = latheSurface(surf, rows, cols);
+  p.dispMesh = new THREE.Mesh(p.disp.geo, makeClay({ color: modelColor.clone(), roughness: 0.7, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+  p.dispMesh.castShadow = p.dispMesh.receiveShadow = true;
+  p.wire = latheWire(surf, 34, 48, Math.round(surf.N / 4), 128);
+  p.wireMesh = new THREE.LineSegments(p.wire.geo, new THREE.LineBasicMaterial({ color: glow(1.25, 0.95, 0.55), transparent: true, opacity: 0, toneMapped: false, depthWrite: false }));
+  p.holder.add(p.dispMesh, p.wireMesh);
+  p.warpF = 0;
+
+  // How much the warp moves the wall, for the caption.
+  p.wobble = 0; p.lift = 0;
+  if (surf.warp) for (let i = 0; i <= 40; i++) for (let j = 0; j < 72; j++) {
+    const o = surf.sample(i / 40, {}), w = surf.warp((j / 72) * TAU, o.r, o.y);
+    p.wobble = Math.max(p.wobble, Math.abs(w[0] - 1));
+    p.lift = Math.max(p.lift, Math.abs(w[1]) / surf.rMax);
+  }
+
+  // Fracture: planes (or the plate's plan curve), the ideal break, the roughened break.
+  p.discs = p.planes.map((pl) => {
+    const g = new THREE.Group();
+    const R = u * 0.8;
+    const fill = new THREE.Mesh(new THREE.CircleGeometry(R, 96), lineMat(glow(1.0, 0.9, 0.75), { opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+    const rim = new THREE.Mesh(new THREE.RingGeometry(R * 0.992, R, 128), lineMat(glow(1.4, 1.15, 0.8), { opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+    g.add(fill, rim);
+    g.position.copy(pl.A).add(pl.B).multiplyScalar(0.5);
+    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), pl.n);
+    p.holder.add(g);
+    return { g, fill, rim };
+  });
+  p.chordLines = p.chords.map((c) => {
+    const bez = new THREE.QuadraticBezierCurve(c.A, new THREE.Vector2(...c.ctrl), c.B);
+    const pts = bez.getSpacedPoints(200).map((v) => new THREE.Vector3(v.x, yMax + 0.12 * u, v.y));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineDashedMaterial({ color: glow(1.5, 1.2, 0.8), dashSize: u * 0.03, gapSize: u * 0.02, transparent: true, opacity: 0, toneMapped: false }));
+    line.computeLineDistances();
+    p.holder.add(line);
+    return line;
+  });
+  const lw = { width: p.gold.width * 0.3, height: p.gold.height * 0.5 };
+  p.idealLine = new THREE.Mesh(buildBead(surf, ideal.cracks, { ...lw, seed: 1 }), lineMat(glow(1.6, 1.6, 1.6)));
+  p.crackLine = new THREE.Mesh(buildBead(surf, p.cracks, { ...lw, seed: 1 }), lineMat(glow(1.7, 0.95, 0.4)));
+  p.holder.add(p.idealLine, p.crackLine);
+  p.crackPts = p.cracks.reduce((n, c) => n + c.pts.length, 0);
+
+  // Kintsugi layers: same paths, so their index ranges line up one to one.
+  p.sabi = new THREE.Mesh(buildBead(surf, p.cracks, { width: p.gold.width * 0.9, height: p.gold.height * 0.45, seed: p.gold.seed, ao: p.ao }), sabiMaterial);
+  // One bead, three views of its buffers: a draw range belongs to the geometry, not the mesh.
+  const beadGeo = buildBead(surf, p.cracks, { ...p.gold, ao: p.ao });
+  const view = () => { const g = new THREE.BufferGeometry(); g.index = beadGeo.index; g.attributes = beadGeo.attributes; return g; };
+  p.urushi = new THREE.Mesh(beadGeo, urushiMaterial);
+  p.powder = new THREE.Mesh(view(), powderMaterial);
+  p.polish = new THREE.Mesh(view(), goldMaterial);
+  p.layers = [p.crackLine, p.sabi, p.urushi, p.powder, p.polish];
+  for (const m of p.layers.slice(1)) { m.castShadow = true; p.holder.add(m); }
+  p.rings = beadGeo.attributes.position.count / 13;
+
+  // The working tip of the brush, and gold dust falling onto the wet lacquer.
+  p.tip = new THREE.Sprite(new THREE.SpriteMaterial({ map: spark, color: glow(2.2, 1.8, 1.2), transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }));
+  p.tip.scale.setScalar(u * 0.09);
+  p.holder.add(p.tip);
+  const NP = 700;
+  p.dust = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({
+    map: spark, size: u * 0.018, vertexColors: true, transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending,
+  }));
+  p.dust.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NP * 3), 3));
+  p.dust.geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(NP * 3), 3));
+  p.dust.frustumCulled = false;
+  p.dustSeed = Array.from({ length: NP }, (_, i) => [(i + 0.5) / NP, Math.random(), Math.random(), Math.random()]);
+  p.holder.add(p.dust);
+
+  // Where the crack is: the camera leans toward it and the piece turns it to the front. A crack
+  // that splits a bowl in two averages out to the axis, so aim at its upper third, by the rim.
+  const cp = p.cracks[0].pts.map(([s0, th]) => surf.point(s0, th, new THREE.Vector3())).sort((x, y) => y.y - x.y);
+  const top = cp.slice(0, Math.max(1, Math.round(cp.length / 3)));
+  p.crackCenter = top.reduce((acc, v) => acc.add(v), new THREE.Vector3()).divideScalar(top.length);
+  p.facing = isPlate ? 0 : Math.atan2(p.crackCenter.z, p.crackCenter.x) - Math.PI / 2;
+
+  // Framing at rest.
+  p.holder.updateMatrixWorld(true);
+  box.setFromObject(p.mesh);
+  p.center = box.getCenter(new THREE.Vector3());
+  p.radius = box.getSize(tmp).length() / 2;
+  if (!p.centerFinal) { p.centerFinal = p.center; p.radiusFinal = p.radius; }
+
+  const decal = new THREE.Mesh(new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false, color: 0x000000, opacity: 0 }));
+  decal.rotation.x = -Math.PI / 2;
+  decal.position.y = 0.002;
+  const sz = box.setFromObject(p.mesh).getSize(tmp);
+  decal.scale.set(sz.x * 1.25, Math.max(sz.z, 0.5) * 1.25, 1);
+  p.decal = decal;
+  p.spin.add(decal);
+
+  // Wipe direction for the glaze layers, in the piece's own frame.
+  p.wipeDir = (isPlate ? new THREE.Vector3(1, -0.15, 0.45) : new THREE.Vector3(0.35, -1, 0.2)).normalize();
+  const bb = p.geo.boundingBox || (p.geo.computeBoundingBox(), p.geo.boundingBox);
+  let lo = Infinity, hi = -Infinity;
+  for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
+    const d = p.wipeDir.dot(tmp.set(x, y, z));
+    lo = Math.min(lo, d); hi = Math.max(hi, d);
+  }
+  p.wipeRange = [lo - 0.01, hi + 0.01];
+  p.planeOld = new THREE.Plane(); p.planeNew = new THREE.Plane();
+  p.planeAll = new THREE.Plane(new THREE.Vector3(0, 1, 0), 1e4);
+  for (const m of [p.mesh.material, p.under.material, p.mats[0]]) m.clippingPlanes = [p.planeAll];
+
+  // Glaze maps, baked in the background while the geometry steps play.
+  const token = ++bakeToken;
+  p.progress = 0;
+  const t = performance.now();
+  bakeMaps(p, { onProgress: (f) => { p.progress = f; } }).then((maps) => {
+    if (token !== bakeToken) return;
+    p.bakeMs = performance.now() - t;
+    const tex = potteryTextures(p, maps);
+    const ns = new THREE.Vector2(p.normalScale, p.normalScale);
+    const base = { map: tex.color, aoMap: tex.orm, roughnessMap: tex.orm, metalnessMap: tex.orm, roughness: 1, metalness: 1 };
+    p.mats.push(
+      new THREE.MeshPhysicalMaterial({ map: tex.color, roughness: 0.62, metalness: 0 }),
+      new THREE.MeshPhysicalMaterial(base),
+      new THREE.MeshPhysicalMaterial({ ...base, normalMap: tex.normal, normalScale: ns }),
+      potteryMaterial(p, maps, tex),
+    );
+    for (const m of p.mats) m.clippingPlanes = [p.planeAll];
+    p.thumbs = {};
+    const src = { color: maps.color, orm: maps.orm, normal: maps.nrm, coat: maps.coat };
+    for (const k in src) p.thumbs[k] = thumbnail(src[k], maps.w, maps.h);
+    p.ready = true;
+    if (shownStep >= 0) showStep(shownStep, true);
+  });
+  return p;
+}
+
+function disposePiece(p) {
+  scene.remove(p.root);
+  p.root.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) if (m && ![sabiMaterial, urushiMaterial, powderMaterial, goldMaterial].includes(m)) m.dispose();
+  });
+  for (const m of p.mats) m.dispose();
+}
+
+function thumbnail(arr, w, h) {
+  const full = document.createElement('canvas');
+  full.width = w; full.height = h;
+  full.getContext('2d').putImageData(new ImageData(arr, w, h), 0, 0);
+  const t = document.createElement('canvas');
+  t.width = 336; t.height = Math.round((336 * h) / w);
+  const g = t.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(full, 0, 0, t.width, t.height);
+  return t;
+}
+
+// ---- pose everything for a moment in the walkthrough -------------------------------------------
+// Every visual is a pure function of the time T, so scrubbing and skipping always land in the
+// right state.
+
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const prog = (id, T) => clamp((T - START[id]) / STEP[id].dur);
+const sph = new THREE.Vector3(), focus = new THREE.Vector3();
+const crackW = new THREE.Vector3(), dustCol = new THREE.Color();
+let userSpin = 0, userZoom = 1;
+
+function pose(T, p) {
+  const pr = (id) => prog(id, T);
+  const a = pr('profile'), b = pr('lathe'), m = pr('mesh'), w = pr('warp'), f = pr('fracture'), r = pr('roughen'), c = pr('clay');
+
+  // Profile draws on, control points pop in, then it rides the wheel round.
+  const drawn = smoothstep(0.08, 0.7, a), fadeProfile = 1 - smoothstep(0, 0.6, m);
+  p.profile.visible = a > 0 && fadeProfile > 0;
+  for (const tube of p.tubes) drawFraction(tube, 0, drawn);
+  p.tubeMat.opacity = fadeProfile;
+  p.polyMat.opacity = 0.38 * smoothstep(0.15, 0.5, a) * (1 - smoothstep(0.1, 0.6, b));
+  const mtx = new THREE.Matrix4();
+  for (const dots of p.dots) {
+    const pts = dots.userData.pts, n = pts.length;
+    pts.forEach((pt, k) => {
+      const t = k / n;
+      const sc = smoothstep(t * 0.6, t * 0.6 + 0.12, a) * (1 - smoothstep(0, 0.5, b));
+      dots.setMatrixAt(k, mtx.makeScale(sc, sc, sc).setPosition(pt));
+    });
+    dots.instanceMatrix.needsUpdate = true;
+  }
+  const sweep = ease(clamp(b / 0.85));
+  p.profile.rotation.y = -sweep * Math.PI;
+  p.axis.visible = a > 0 && m < 1;
+  p.axis.material.opacity = 0.55 * smoothstep(0, 0.3, a) * (1 - smoothstep(0.1, 0.7, m));
+
+  // The surface sweeps in behind the profile, then gets its wireframe and its wobble.
+  p.dispMesh.visible = b > 0 && c < 0.35;
+  p.dispMesh.material.color.copy(modelColor).lerp(clayColor, smoothstep(0.05, 0.33, c));
+  p.dispMesh.material.roughness = mix(0.7, 0.9, smoothstep(0.05, 0.33, c));
+  p.dispMesh.geometry.setDrawRange(0, Math.round(sweep * p.disp.pairs) * p.disp.perPair);
+  const wf = ease(clamp(w / 0.8));
+  if (wf !== p.warpF) { p.disp.update(wf); p.wire.update(wf); p.warpF = wf; }
+  p.wireMesh.material.opacity = 0.6 * smoothstep(0.05, 0.45, m) * (1 - 0.65 * smoothstep(0, 0.3, f)) * (1 - smoothstep(0, 0.3, c));
+  p.wireMesh.visible = p.wireMesh.material.opacity > 0.001;
+
+  // Fracture planes slide in; the ideal break traces round; then the rough break replaces it.
+  const K = p.discs.length, fadePlanes = 1 - smoothstep(0.15, 0.6, r);
+  p.discs.forEach((d, k) => {
+    const t0 = 0.04 + (0.42 * k) / Math.max(K, 1);
+    const on = ease(smoothstep(t0, t0 + 0.22, f)) * fadePlanes;
+    d.g.visible = on > 0.001;
+    d.g.scale.setScalar(0.4 + 0.6 * on);
+    d.fill.material.opacity = 0.045 * on;
+    d.rim.material.opacity = 0.6 * on;
+  });
+  for (const line of p.chordLines) {
+    line.material.opacity = 0.9 * smoothstep(0.02, 0.2, f) * fadePlanes;
+    line.visible = line.material.opacity > 0.001;
+    line.geometry.setDrawRange(0, Math.round(smoothstep(0.02, 0.4, f) * 201));
+  }
+  drawFraction(p.idealLine, 0, smoothstep(0.35, 0.95, f));
+  p.idealLine.material.opacity = 1 - smoothstep(0.2, 0.7, r);
+  p.idealLine.visible &&= p.idealLine.material.opacity > 0.001;
+
+  // Kintsugi layers: each one covers the one below it, front to back along the same seam.
+  const fr = [smoothstep(0.08, 0.75, r), ...['sabi', 'urushi', 'gold', 'burnish'].map((id) => smoothstep(0.04, 0.85, pr(id)))];
+  p.layers.forEach((layer, i) => drawFraction(layer, fr[i + 1] || 0, fr[i]));
+  p.crackLine.material.color.copy(glow(1.7, 0.95, 0.4)).lerp(new THREE.Color(0.05, 0.035, 0.03), smoothstep(0.3, 0.9, c));
+  p.crackLine.material.opacity = 1;
+
+  // The brush tip rides the front of whichever layer is being laid down.
+  let active = -1;
+  for (let i = 1; i < fr.length; i++) if (fr[i] > 0 && fr[i] < 1) active = i;
+  p.tip.visible = active > 0;
+  if (active > 0) {
+    const geo = p.layers[active].geometry, ix = geo.index.array;
+    const k = Math.max(0, Math.floor(fr[active] * (ix.length / 6)) * 6 - 1);
+    p.tip.position.fromBufferAttribute(geo.attributes.position, ix[k]);
+    p.tip.material.opacity = smoothstep(0, 0.04, fr[active]) * (1 - smoothstep(0.96, 1, fr[active]));
+  }
+  poseDust(p, pr('gold'));
+
+  // The real mesh replaces the display mesh; glaze maps wipe on one after another.
+  const real = c >= 0.35;
+  p.mesh.visible = real;
+  let k = 0;
+  MAP_STEPS.forEach((id, i) => { if (pr(id) > 0 && p.mats[i + 1]) k = i + 1; });
+  const wipe = k ? ease(clamp(pr(MAP_STEPS[k - 1]) / 0.8)) : 1;
+  p.mesh.material = p.mats[k];
+  p.under.visible = real && wipe < 1;
+  if (wipe < 1) {
+    p.under.material = p.mats[k - 1];
+    const front = mix(p.wipeRange[0], p.wipeRange[1], wipe);
+    p.planeNew.set(tmp.copy(p.wipeDir).negate(), front);
+    p.planeOld.set(tmp.copy(p.wipeDir), -front);
+  }
+
+  // Finale: the plate stands up on its easel.
+  const fin = pr('final');
+  const up = p.isPlate ? ease(smoothstep(0.05, 0.5, fin)) : 0;
+  if (p.isPlate) {
+    const ang = p.stand.angle * up;
+    p.holder.rotation.x = ang;
+    p.holder.position.y = (p.stand.lift * Math.sin(ang)) / Math.sin(p.stand.angle) + 0.12 * Math.sin(Math.PI * up);
+    const sOn = smoothstep(0.42, 0.62, fin);
+    for (const part of p.stand.parts) { part.visible = sOn > 0; part.material.opacity = part.userData.opacity * sOn; }
+  }
+  p.decal.material.opacity = p.isPlate ? 0.25 * up : smoothstep(0, 1, b);
+
+  // The turntable: still while drawing, then a gentle sway, turning the crack toward us.
+  // Once there is a crack to look at, sway less so it stays in frame.
+  const swayAmp = 0.38 * (1 - 0.6 * smoothstep(START.fracture, START.fracture + 2.5, T) * (1 - up));
+  const swayT = rec ? rec.frame / rec.fps : Math.max(0, T - START.mesh);   // a sped-up film keeps a calm sway
+  const sway = swayAmp * Math.sin(0.33 * swayT) * smoothstep(START.mesh, START.mesh + 2, T);
+  const face = p.facing * smoothstep(START.fracture, START.fracture + 2.5, T) * (1 - up);
+  p.spin.rotation.y = face + sway + userSpin;
+  p.root.updateMatrixWorld(true);
+
+  // Clipping planes live in world space.
+  if (wipe < 1) {
+    p.planeNew.applyMatrix4(p.holder.matrixWorld);
+    p.planeOld.applyMatrix4(p.holder.matrixWorld);
+    p.mesh.material.clippingPlanes = [p.planeNew];
+    p.under.material.clippingPlanes = [p.planeOld];
+  } else {
+    p.mesh.material.clippingPlanes = [p.planeAll];
+  }
+
+  poseCamera(T, p, up);
+}
+
+function poseDust(p, g) {
+  const geo = p.dust.geometry, pos = geo.attributes.position, col = geo.attributes.color;
+  const bead = p.powder.geometry, ix = bead.index.array, bp = bead.attributes.position, bn = bead.attributes.normal;
+  const n = ix.length / 6, life = 0.12, fall = p.u * 0.35;
+  p.dust.visible = g > 0 && g < 1;
+  if (!p.dust.visible) return;
+  p.dustSeed.forEach(([at, j1, j2, j3], i) => {
+    const land = mix(0.04, 0.85, at);                  // when the gold front passes this spot
+    const age = (g - land + life) / life;               // 0 → 1 while falling
+    const v = ix[Math.min(Math.floor(at * n) * 6, ix.length - 1)];
+    tmp.fromBufferAttribute(bp, v);
+    let alpha = 0;
+    if (age > 0 && age < 1.6 && bn.getY(v) > -0.2) {
+      const h = Math.pow(Math.max(0, 1 - age), 1.6);
+      tmp.x += (j1 - 0.5) * p.u * 0.05 * h;
+      tmp.z += (j2 - 0.5) * p.u * 0.05 * h;
+      tmp.y += h * fall * (0.6 + 0.6 * j3);
+      alpha = smoothstep(0, 0.25, age) * (1 - smoothstep(1, 1.6, age));
+    }
+    pos.setXYZ(i, tmp.x, tmp.y, tmp.z);
+    dustCol.setRGB(1.6, 1.2, 0.55).multiplyScalar(alpha * (0.6 + 0.6 * j3));
+    col.setXYZ(i, dustCol.r, dustCol.g, dustCol.b);
+  });
+  pos.needsUpdate = col.needsUpdate = true;
+}
+
+function viewFor(id, p) {
+  const v = VIEWS[id], o = (p.isPlate && v.plate) || {};
+  return { phi: o.phi ?? v.phi ?? p.view.phi, rm: o.rm ?? v.rm, fc: o.fc ?? v.fc };
+}
+
+function poseCamera(T, p, up) {
+  let i = STEPS.findIndex((s) => T < s.start + s.dur);
+  if (i < 0) i = STEPS.length - 1;
+  const s = STEPS[i], to = viewFor(s.id, p), from = viewFor(STEPS[Math.max(i - 1, 0)].id, p);
+  const k = ease(clamp((T - s.start) / 2));
+  const phi = mix(from.phi, to.phi, k), rm = mix(from.rm, to.rm, k), fc = mix(from.fc, to.fc, k);
+
+  crackW.copy(p.crackCenter).applyMatrix4(p.holder.matrixWorld);
+  focus.copy(p.center).lerp(p.centerFinal, up).lerp(crackW, fc);
+  const R = mix(p.radius, p.radiusFinal, up);
+  const dist = rm * fitDistance(R) * userZoom;
+  camera.position.copy(focus).add(sph.setFromSphericalCoords(dist, phi, 0));
+  camera.lookAt(focus);
+}
+
+function fitDistance(R) {
+  const w = rec ? rec.W : innerWidth - panelWidth(), h = rec ? rec.H : innerHeight;
+  const vHalf = (camera.fov * Math.PI) / 360;
+  const hHalf = Math.atan(Math.tan(vHalf) * (w / h));
+  return (R * 1.08) / Math.sin(Math.min(vHalf, hHalf));
+}
+
+// ---- timeline UI --------------------------------------------------------------------------------
+
+const $ = (id) => document.getElementById(id);
+const panelWidth = () => (!rec && innerWidth > 900 ? 400 : 0);
+const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+const REPLAY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5"/></svg>';
+
+let T = 0, playing = true, shownStep = -1;
+let rec = null;   // active video capture, see the CCapture section at the end
+
+PIECES.forEach((def, i) => {
+  const o = document.createElement('option');
+  o.value = i; o.textContent = def.name;
+  $('picker').appendChild(o);
+});
+
+const segFill = [];
+for (const key of Object.keys(PHASES)) {
+  const steps = STEPS.filter((s) => s.phase === key);
+  const ph = document.createElement('div');
+  ph.className = 'ph';
+  ph.dataset.phase = key;
+  ph.style.flex = steps.reduce((a, s) => a + s.dur, 0);
+  ph.innerHTML = `<div class="ph-label">${PHASES[key].name} · ${PHASES[key].jp}</div><div class="segs"></div>`;
+  for (const s of steps) {
+    const b = document.createElement('button');
+    b.className = 'seg';
+    b.style.flex = s.dur;
+    b.setAttribute('aria-label', s.title);
+    b.innerHTML = `<i></i><span class="tip">${s.title}</span>`;
+    b.addEventListener('click', () => seek(s.start));
+    ph.querySelector('.segs').appendChild(b);
+    segFill[STEPS.indexOf(s)] = b.querySelector('i');
+  }
+  $('track').appendChild(ph);
+}
+
+function stepAt(t) { const i = STEPS.findIndex((s) => t < s.start + s.dur); return i < 0 ? STEPS.length - 1 : i; }
+const resolve = (v) => (typeof v === 'function' ? v(P) : v);
+
+let swapTimer;
+function showStep(i, now = false) {
+  const s = STEPS[i], body = $('body');
+  const fill = () => {
+    $('phase').textContent = PHASES[s.phase].name;
+    $('phaseJp').textContent = PHASES[s.phase].jp;
+    $('stepno').textContent = `Step ${String(i + 1).padStart(2, '0')} / ${STEPS.length}`;
+    $('title').textContent = s.title;
+    $('jp').textContent = s.jp;
+    $('text').textContent = resolve(s.text);
+    $('stats').textContent = resolve(s.stats) || '';
+    const thumb = s.map && P.thumbs?.[s.map];
+    $('map').classList.toggle('on', !!thumb);
+    if (thumb) {
+      const c = $('thumb');
+      c.width = thumb.width; c.height = thumb.height;
+      c.getContext('2d').drawImage(thumb, 0, 0);
+      $('mapCap').textContent = { color: 'Colour map', orm: 'ORM map', normal: 'Normal map', coat: 'Clear-coat map' }[s.map];
+    }
+    body.classList.remove('out');
+  };
+  shownStep = i;
+  clearTimeout(swapTimer);
+  if (now) { fill(); return; }
+  body.classList.add('out');
+  swapTimer = setTimeout(fill, 280);
+  document.querySelectorAll('.ph').forEach((el) => el.classList.toggle('on', el.dataset.phase === s.phase));
+}
+
+function seek(t) {
+  T = clamp(t, 0, TOTAL);
+  if (T >= TOTAL) playing = false;
+  updateUI();
+}
+
+function updateUI() {
+  const i = stepAt(T);
+  if (i !== shownStep) showStep(i);
+  STEPS.forEach((s, k) => { segFill[k].style.width = `${clamp((T - s.start) / s.dur) * 100}%`; });
+  const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  $('clock').textContent = `${mmss(T)} / ${mmss(TOTAL)}`;
+  const icon = playing ? PAUSE : T >= TOTAL ? REPLAY : PLAY;
+  if ($('play').dataset.icon !== icon) { $('play').innerHTML = icon; $('play').dataset.icon = icon; }
+}
+
+$('play').addEventListener('click', togglePlay);
+$('prev').addEventListener('click', () => stepBy(-1));
+$('next').addEventListener('click', () => stepBy(1));
+function togglePlay() {
+  if (T >= TOTAL) T = 0;
+  playing = !playing;
+  updateUI();
+}
+function stepBy(d) {
+  const i = stepAt(T);
+  if (d < 0 && T - STEPS[i].start > 0.8) seek(STEPS[i].start);
+  else seek(STEPS[clamp(i + d, 0, STEPS.length - 1)].start);
+}
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'SELECT' || rec) return;
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  if (e.key === 'ArrowRight') stepBy(1);
+  if (e.key === 'ArrowLeft') stepBy(-1);
+});
+
+function loadPiece(i) {
+  if (P) disposePiece(P);
+  P = buildPiece(i);
+  $('picker').value = i;
+  $('back').href = `index.html?piece=${i}`;
+  userSpin = 0; userZoom = 1;
+  history.replaceState(null, '', `?piece=${i}`);   // drops any ?step, which only applies on load
+  T = 0; playing = true; shownStep = -1;
+  updateUI();
+}
+$('picker').addEventListener('change', (e) => { loadPiece(Number(e.target.value)); canvas.focus(); });
+
+// Drag to turn the piece, scroll to zoom.
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => { drag = e.clientX; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', (e) => { if (drag === null) return; userSpin += (e.clientX - drag) * 0.008; drag = e.clientX; });
+canvas.addEventListener('pointerup', () => { drag = null; });
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); userZoom = clamp(userZoom * Math.exp(e.deltaY * 0.001), 0.45, 1.8); }, { passive: false });
+
+function resize() {
+  if (rec) { fitRecordingCanvas(); return; }
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h;
+  camera.fov = w < h ? 42 : 30;
+  if (panelWidth()) camera.setViewOffset(w, h, -panelWidth() / 2, 0, w, h);
+  else camera.setViewOffset(w, h, 0, h * 0.12, w, h);   // lift the piece above the caption on phones
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  composer.setPixelRatio(DPR);
+  composer.setSize(w, h);
+}
+addEventListener('resize', resize);
+resize();
+
+// ?piece=0..4, and optionally ?step=<id>&at=<0..1> to open paused on a moment of one step.
+const query = new URLSearchParams(location.search);
+const start = Number(query.get('piece'));
+loadPiece(Number.isInteger(start) ? clamp(start, 0, PIECES.length - 1) : 0);
+if (STEP[query.get('step')]) {
+  const s = STEP[query.get('step')];
+  playing = false;
+  seek(s.start + s.dur * clamp(Number(query.get('at') ?? 0.5)));
+}
+
+// ---- loop -----------------------------------------------------------------------------------------
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  let dt = Math.min(clock.getDelta(), 0.05);
+  if (rec) {
+    dt = 1 / rec.fps;
+    T = recordingTime(rec.frame / rec.fps);
+  } else if (playing) {
+    let next = T + dt;
+    // Hold at the first glaze step until the maps have finished baking.
+    if (!P.ready && next > START.color) next = Math.max(T, START.color);
+    T = Math.min(next, TOTAL);
+    if (T >= TOTAL) playing = false;
+  }
+  const waiting = !P.ready && T >= START.color - 0.01;
+  $('wait').classList.toggle('on', waiting);
+  if (waiting) $('wait').textContent = `Baking glaze maps · ${Math.round(P.progress * 100)}%`;
+  updateUI();
+  pose(T, P);
+  composer.render(dt);
+  if (rec) recordingCapture();
+});
+
+// ---- social video capture (CCapture.js) ----------------------------------------------------------
+// Press R (or open with ?record) to film the whole process sped up into a short clip. Each step gets
+// a share of the clip by weight, so quick steps stay readable; the finished piece holds at the end.
+// Options: ?record&piece=0&size=1080x1920&fps=60&duration=10&format=webm   (format: webm | png | jpg)
+
+const REC_WEIGHT = {
+  profile: 1, lathe: 1, mesh: 0.6, warp: 0.6, fracture: 1, roughen: 0.7, clay: 0.4, color: 0.6, rough: 0.5,
+  relief: 0.5, glaze: 0.5, sabi: 0.6, urushi: 0.7, gold: 0.8, burnish: 0.7, final: 1.4,
+};
+const REC_HOLD = 1.2;   // seconds on the finished piece
+
+function recordingTime(t) {
+  const span = rec.duration - REC_HOLD, sum = STEPS.reduce((a, s) => a + REC_WEIGHT[s.id], 0);
+  let at = 0;
+  for (const s of STEPS) {
+    const len = (REC_WEIGHT[s.id] / sum) * span;
+    if (t < at + len) return s.start + s.dur * ((t - at) / len);
+    at += len;
+  }
+  return TOTAL;
+}
+
+function loadCCapture() {
+  if (window.CCapture) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Could not load CCapture.js'));
+    document.head.appendChild(s);
+  });
+}
+
+function fitRecordingCanvas() {
+  const k = Math.min(innerWidth / rec.W, (innerHeight - 64) / rec.H, 1);
+  Object.assign(canvas.style, {
+    width: `${rec.W * k}px`, height: `${rec.H * k}px`,
+    left: `${(innerWidth - rec.W * k) / 2}px`, top: `${(innerHeight - rec.H * k) / 2 + 24}px`,
+  });
+}
+
+async function startRecording() {
+  if (rec) return;
+  const params = query;   // as loaded: loadPiece() rewrites the address bar
+  const [W, H] = (params.get('size') || '1080x1920').split('x').map(Number);
+  const fps = Number(params.get('fps') || 60);
+  const duration = Number(params.get('duration') || 10);
+  const format = params.get('format') || 'webm';
+  const badge = $('recBadge');
+  badge.classList.add('on');
+  badge.textContent = 'Preparing recording';
+  try { await loadCCapture(); } catch (e) { badge.textContent = e.message; return; }
+  while (!P.ready) {
+    badge.textContent = `Baking glaze maps · ${Math.round(P.progress * 100)}%`;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  await document.fonts.ready;
+
+  const overlay = document.createElement('canvas');
+  overlay.width = W; overlay.height = H;
+  rec = {
+    W, H, fps, duration, frame: 0, total: Math.round(duration * fps),
+    overlay, ctx: overlay.getContext('2d'),
+    capturer: new CCapture({ format, framerate: fps, quality: 95, name: `kintsugi-process-${P.index}-${W}x${H}-${fps}fps` }),
+  };
+  document.body.classList.add('recording');
+  userSpin = 0; userZoom = 1;
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H, false);
+  composer.setPixelRatio(1);
+  composer.setSize(W, H);
+  camera.aspect = W / H;
+  camera.fov = W < H ? 42 : 30;
+  camera.setViewOffset(W, H, 0, W < H ? H * 0.07 : 0, W, H);   // leave room for the caption below
+  camera.updateProjectionMatrix();
+  fitRecordingCanvas();
+  rec.capturer.start();
+}
+
+// Composite the render with captions: the phase as a title, the step beneath it, and a progress rule.
+function drawCaption(ctx, W, H, t) {
+  const u = Math.min(W, H) / 1080, pad = 72 * u;
+  const i = stepAt(T), s = STEPS[i];
+  const group = (st) => (st.id === 'final' ? 'final' : st.phase);
+  const g = group(s);
+  const gSteps = STEPS.filter((st) => group(st) === g);
+  const gStart = gSteps[0].start, gEnd = gSteps.at(-1).start + gSteps.at(-1).dur;
+  // Fade titles in real time around group changes.
+  const realStart = recordingStartOf(gStart);
+  const fadeOut = g === 'final' ? 0 : smoothstep(recordingStartOf(gEnd) - 0.14, recordingStartOf(gEnd), t);
+  const alpha = smoothstep(realStart, realStart + 0.18, t) * (1 - fadeOut);
+
+  const grd = ctx.createLinearGradient(0, H * 0.66, 0, H);
+  grd.addColorStop(0, 'rgba(8,7,6,0)');
+  grd.addColorStop(1, 'rgba(8,7,6,0.6)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, H * 0.66, W, H * 0.34);
+
+  ctx.textBaseline = 'alphabetic';
+  ctx.letterSpacing = `${4 * u}px`;
+  ctx.fillStyle = '#d9b25c';
+  ctx.font = `500 ${34 * u}px "Shippori Mincho", serif`;
+  ctx.fillText('金継ぎ', pad, pad + 34 * u);
+  const kw = ctx.measureText('金継ぎ').width;
+  ctx.fillStyle = '#efe6d8';
+  ctx.font = `400 ${42 * u}px "Cormorant Garamond", serif`;
+  ctx.fillText('Kintsugi', pad + kw + 18 * u, pad + 34 * u);
+  ctx.textAlign = 'right';
+  ctx.font = `400 ${22 * u}px Inter, sans-serif`;
+  ctx.fillStyle = 'rgba(239,230,216,0.65)';
+  ctx.letterSpacing = `${3 * u}px`;
+  ctx.fillText('HOW IT’S MADE', W - pad, pad + 30 * u);
+  ctx.textAlign = 'left';
+
+  // Progress rule, one segment per phase.
+  const keys = Object.keys(PHASES), y0 = H - pad, gap = 10 * u, full = W - 2 * pad - gap * (keys.length - 1);
+  let x = pad;
+  for (const key of keys) {
+    const st = STEPS.filter((q) => q.phase === key), a = st[0].start, b = st.at(-1).start + st.at(-1).dur;
+    const w = full * ((b - a) / TOTAL);
+    ctx.fillStyle = 'rgba(239,230,216,0.18)';
+    ctx.fillRect(x, y0, w, 3 * u);
+    ctx.fillStyle = '#d9b25c';
+    ctx.fillRect(x, y0, w * clamp((T - a) / (b - a)), 3 * u);
+    x += w + gap;
+  }
+
+  ctx.globalAlpha = alpha;
+  const rise = (1 - alpha) * 14 * u;
+  let y = y0 - 44 * u + rise;
+  ctx.font = `400 ${26 * u}px Inter, sans-serif`;
+  ctx.fillStyle = 'rgba(239,230,216,0.75)';
+  ctx.letterSpacing = `${3 * u}px`;
+  ctx.fillText(g === 'final' ? P.meta.toUpperCase() : `${String(i + 1).padStart(2, '0')}  ${s.title.toUpperCase()}`, pad, y);
+  y -= 56 * u;
+  ctx.fillStyle = '#d9b25c';
+  ctx.font = `500 ${34 * u}px "Shippori Mincho", serif`;
+  ctx.letterSpacing = `${7 * u}px`;
+  ctx.fillText(g === 'final' ? P.jp : PHASES[g].jp, pad, y);
+  y -= 58 * u;
+  ctx.fillStyle = '#efe6d8';
+  ctx.font = `500 ${104 * u}px "Cormorant Garamond", serif`;
+  ctx.letterSpacing = '0px';
+  ctx.fillText(g === 'final' ? P.name : PHASES[g].name, pad, y);
+  ctx.globalAlpha = 1;
+  ctx.letterSpacing = '0px';
+}
+
+// Inverse of recordingTime at step boundaries: when (in clip seconds) timeline moment T0 is reached.
+function recordingStartOf(T0) {
+  const span = rec.duration - REC_HOLD, sum = STEPS.reduce((a, s) => a + REC_WEIGHT[s.id], 0);
+  let at = 0;
+  for (const s of STEPS) { if (s.start >= T0 - 1e-6) return at; at += (REC_WEIGHT[s.id] / sum) * span; }
+  return at;
+}
+
+function recordingCapture() {
+  const { ctx, W, H } = rec;
+  ctx.drawImage(renderer.domElement, 0, 0, W, H);
+  drawCaption(ctx, W, H, rec.frame / rec.fps);
+  rec.capturer.capture(rec.overlay);
+  rec.frame++;
+  $('recBadge').textContent = `Recording ${rec.frame} / ${rec.total}`;
+  if (rec.frame >= rec.total) finishRecording();
+}
+
+function finishRecording() {
+  const { capturer } = rec;
+  capturer.stop();
+  $('recBadge').textContent = 'Encoding — the file will download';
+  capturer.save();
+  rec = null;
+  T = TOTAL; playing = false;
+  document.body.classList.remove('recording');
+  canvas.removeAttribute('style');
+  renderer.setPixelRatio(DPR);
+  resize();
+  setTimeout(() => $('recBadge').classList.remove('on'), 4000);
+}
+
+addEventListener('keydown', (e) => { if ((e.key === 'r' || e.key === 'R') && e.target.tagName !== 'SELECT') startRecording(); });
+if (query.has('record')) startRecording();
+</script>
+</body>
+</html>
